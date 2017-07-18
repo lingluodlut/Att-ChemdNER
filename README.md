@@ -26,7 +26,7 @@ Att-ChemdNER uses the following dependencies:
 	- optimizaiton.py: optimization method
 	- utils.py
 	- train.py: train a basic BiLSTM-CRF model
-	- AttenTrain.py: train the Att-BiLSTM-CRF model
+	- AttenTrain.py: train a Att-BiLSTM-CRF model
 	- tagger.py: tag the document using the BiLSTM-CRF model
 	- AttenTrain.py: tag the document using the Att-BiLSTM-CRF model
 
@@ -36,7 +36,7 @@ To train a basic BiLSTM-CRF model, you need to provide the file of the training 
 ```
 python train.py --train trainfile --dev devfile --test testfile --pre_emb word_embedding.model 
 ```
-## Train our Att-BiLSTM-CRF model
+## Train a Att-BiLSTM-CRF model
 To train our Att-BiLSTM-CRF model, you need to provide the file of the training set, development set,testing set and word embedding model, and run the AttenTrain.py script:
 
 ```
