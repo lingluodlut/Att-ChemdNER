@@ -344,7 +344,7 @@ useEarlyStopping=False;
 # Initialize model
 model = Model(parameters=parameters, 
               models_path=models_path,
-              model_path="./models/NLPBA/",Training=True);
+              model_path="./models/TEST/",Training=True);
 # Save the mappings to disk
 print 'Saving the mappings to disk...'
 model.save_mappings(id_to_word, id_to_char, id_to_tag)

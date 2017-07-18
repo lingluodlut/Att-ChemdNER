@@ -11,7 +11,7 @@ from model import Model
 
 optparser = optparse.OptionParser()
 optparser.add_option(
-    "-m", "--model", default="./models/chemAtten_word_char/",
+    "-m", "--model", default="../models/chemAtten_word_char/",
     help="Model location"
 )
 optparser.add_option(

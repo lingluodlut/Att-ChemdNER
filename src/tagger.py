@@ -11,15 +11,15 @@ from model import Model
 
 optparser = optparse.OptionParser()
 optparser.add_option(
-    "-m", "--model", default="./models/chemnerModel/",
+    "-m", "--model", default="../models/chemnerModel/",
     help="Model location"
 )
 optparser.add_option(
-    "-i", "--input", default="/home/BIO/luoling/precision_medicine/NER/corpus/DUTIR/ADE-NEG_text.token4",
+    "-i", "--input", default="../data/chemnder_test.txt",
     help="Input file location"
 )
 optparser.add_option(
-    "-o", "--output", default="./ADE-NEG.tsv",
+    "-o", "--output", default="./chemnder_test.tsv",
     help="Output file location"
 )
 optparser.add_option(
