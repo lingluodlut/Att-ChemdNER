@@ -12,9 +12,11 @@ Att-ChemdNER uses the following dependencies:
 ## Content
 - data
 	- CHENDNER corpus
+	- CDR corpus
 - models
 	- The basic BiLSTM-CRF model
 	- The Att-BiLSTM-CRF model
+	- The 50-dimensional word embedding
 - src
 	- backend
 	- evaluation: evaluate result of NER task
