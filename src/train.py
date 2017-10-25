@@ -31,15 +31,15 @@ BASH_CLEAR="\033[0m"
 #{{{
 optparser = optparse.OptionParser()
 optparser.add_option(
-    "-T", "--train", default="",
+    "-T", "--train", default="training.ner.ssplit.token4.BIO",
     help="Train set location"
 )
 optparser.add_option(
-    "-d", "--dev", default="",
+    "-d", "--dev", default="development.ner.ssplit.token4.BIO",
     help="Dev set location"
 )
 optparser.add_option(
-    "-t", "--test", default="",
+    "-t", "--test", default="evaluation.ner.ssplit.token4.BIO",
     help="Test set location"
 )
 optparser.add_option(
@@ -79,7 +79,7 @@ optparser.add_option(
     type='int', help="Use a bidirectional LSTM for words"
 )
 optparser.add_option(
-    "-p", "--pre_emb", default="",
+    "-p", "--pre_emb", default="/home/BIO/luoling/chemdner/data/word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d50",
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
@@ -107,7 +107,7 @@ optparser.add_option(
     type='int', help="Reload the last saved model"
 )
 optparser.add_option(
-    "-S","--String",default="",
+    "-S","--String",default="bilstm-crf-chemdner100d",
     help="some about this model"
     )
 opts = optparser.parse_args()[0]
@@ -119,15 +119,25 @@ CORPUS="chem";
 tagFilter=None;
 if CORPUS == "chem":
 #{{{
-    opts.train="../data/chemdner_training.ner.sen.token4.BIO_allfea";
-    opts.dev="../data/chemdner_development.ner.sen.token4.BIO_allfea";
-    opts.test="../data/chemdner_evaluation.ner.sen.token4.BIO_allfea";
-    opts.pre_emb="../data/chemdner_pubmed_drug.word2vec_model_token4_d50";
+    opts.train="/home/BIO/luoling/chemdner/data/corpus/CHEMDNER/feature/all_fea/chemdner_training.ner.sen.token4.BIO_allfea";
+    opts.dev="/home/BIO/luoling/chemdner/data/corpus/CHEMDNER/feature/all_fea/chemdner_development.ner.sen.token4.BIO_allfea";
+    opts.test="/home/BIO/luoling/chemdner/data/corpus/CHEMDNER/feature/all_fea/chemdner_evaluation.ner.sen.token4.BIO_allfea";
+    opts.pre_emb="/home/BIO/luoling/chemdner/data/word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d300";
     tagFilter=None;
     devBoundary=55508
 #}}}
+elif CORPUS == "CDR":
+#{{{
+    opts.train="/home/BIO/luoling/chemdner/data/corpus/CDR/feature/all_fea/cdr_training.ner.sen.token4.BIO_allfea_drug";
+    opts.dev="/home/BIO/luoling/chemdner/data/corpus/CDR/feature/all_fea/cdr_development.ner.sen.token4.BIO_allfea_drug";
+    opts.test="/home/BIO/luoling/chemdner/data/corpus/CDR/feature/all_fea/cdr_test.ner.sen.token4.BIO_allfea_drug";
+    opts.pre_emb="/home/BIO/luoling/chemdner/data/word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d50";
+    tagFilter=['Disease'];
+    devBoundary=8319;
+#}}}
+
 else:
-    assert 0,'unknow corpus'
+    assert 0,"unknown corpus";
 
 #read word_dim from word2vec_model
 #{{{
@@ -256,7 +266,7 @@ dico_tags, tag_to_id, id_to_tag = tag_mapping(train_sentences)
 #{{{
 featureMap={#{{{
             'word':{
-                        'index':0,
+                        'index':1,
                         'lstm-input':0,
                         'attended':0,
             },
@@ -286,9 +296,9 @@ featureMap={#{{{
                         'attended':0,
                         'dim':10},
             'dic':{     'index':4,
-                        'isUsed':0,
+                        'isUsed':1,
                         'num':3,
-                        'lstm-input':0,
+                        'lstm-input':1,
                         'attended':0,
                         'dim':5},
            }#}}}
@@ -339,12 +349,12 @@ print "%i / %i / %i sentences in train / dev / test." % (
 parameters['useAttend']=False;
 parameters['sentencesLevelLoss']=False;
 parameters['training']=True;
-saveModel=False;
+saveModel=True;
 useEarlyStopping=False;
 # Initialize model
 model = Model(parameters=parameters, 
               models_path=models_path,
-              model_path="./models/TEST/",Training=True);
+              model_path="./models/bilstm-crf-dic-chemdner-patentv-50d/",Training=True);
 # Save the mappings to disk
 print 'Saving the mappings to disk...'
 model.save_mappings(id_to_word, id_to_char, id_to_tag)
@@ -364,9 +374,9 @@ if opts.reload:
 #
 singletons = set([word_to_id[k] for k, v
                   in dico_words_train.items() if v == 1])
-freq_eval = 1#int(len(train_data)*0.3)  # evaluate on dev every freq_eval steps
+freq_eval = int(len(train_data)*0.3)  # evaluate on dev every freq_eval steps
 count = 0
-limitPrint=0;
+limitPrint=12;
 param = {
          'lr':0.005,
          'verbose':1,
