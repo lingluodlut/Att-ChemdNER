@@ -54,7 +54,7 @@ The inputfile should contain one document by line, and they have to be tokenized
 Recognize the chemical entities from the documents using the pretrained Att-BiLSTM-CRF model, and you need to provide the pretrained model, inputfile and outputfile:
 
 ```
-python Atten_tagger.py --model BiLSTM-CRF.model --input inputfile --output outputfile
+python Atten_tagger.py --model Att-BiLSTM-CRF.model --input inputfile --output outputfile
 ```
 
 The inputfile should contain one document by line, and they have to be tokenized.
