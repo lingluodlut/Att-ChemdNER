@@ -125,6 +125,40 @@ class Model(object):
                             % param.name)
         self.components[param.name] = param
 
+    def modelScore(self,tag_ids,scores,s_len):
+    #{{{
+        """
+            ATTENTATION THIS FUNCTION IS SYMBOL PROGRAMMING
+            this function is to return the score of our model at a fixed sentence label 
+        @param:
+            scores:        the scores matrix ,the output of our model
+            tag:           a numpy array, which represent one sentence label 
+            sent_lens:     a scalar number, the length of sentence.
+                because our sentence label will be expand to max sentence length,
+                so we will use this to get the original sentence label. 
+        @return: 
+            a scalar number ,the score;
+        """
+    #{{{
+        n_tags=self.output_dim;
+        transitions=self.transitions;
+        #score from tags_scores
+        real_path_score = scores[T.arange(s_len), tag_ids].sum()
+
+        # Score from transitions
+        b_id = theano.shared(value=np.array([n_tags], dtype=np.int32))
+        e_id = theano.shared(value=np.array([n_tags + 1], dtype=np.int32))
+        padded_tags_ids = T.concatenate([b_id, tag_ids, e_id], axis=0)
+        real_path_score += transitions[
+                padded_tags_ids[T.arange(s_len + 1)],
+                padded_tags_ids[T.arange(s_len + 1) + 1]
+            ].sum()
+        #to prevent T.exp(real_path_score) to be inf 
+        #return real_path_score;
+        return real_path_score/s_len;
+    #}}}
+    #}}}
+   
     def save(self):
 #{{{
         """
@@ -406,14 +440,32 @@ class Model(object):
                                            outputs_info=T.zeros((inputs.shape[0],word_lstm_dim*2),dtype='float32'),
                                            sequences=[T.arange(docLen.shape[0])],
                                            non_sequences=[inputs,docLen]);
+            
+            word_lstm_for.link(inputs)
+            word_lstm_rev.link(inputs[::-1, :])
+            word_for_output = word_lstm_for.h
+            word_for_c=word_lstm_for.c;
+            word_rev_output = word_lstm_rev.h[::-1, :]
+            word_rev_c=word_lstm_rev.c[::-1,:];
+            
+            final_c=T.concatenate(
+                    [word_for_c,word_rev_c],
+                    axis=-1
+                 )    
             final_output=result[-1]
         else :
             word_lstm_for.link(inputs)
             word_lstm_rev.link(inputs[::-1, :])
             word_for_output = word_lstm_for.h
+            word_for_c=word_lstm_for.c;
             word_rev_output = word_lstm_rev.h[::-1, :]
+            word_rev_c=word_lstm_rev.c[::-1,:];
             final_output = T.concatenate(
                     [word_for_output, word_rev_output],
+                    axis=-1
+                )
+            final_c=T.concatenate(
+                    [word_for_c,word_rev_c],
                     axis=-1
                 )
        
@@ -442,6 +494,8 @@ class Model(object):
             
             attention_layer=AttentionLayer(attended_dim=attendedDim,
                                            state_dim=attendedDim,
+            #attention_layer=AttentionLayer(attended_dim=word_lstm_dim*2,
+            #                               state_dim=word_lstm_dim*2,
                                            source_dim=word_lstm_dim*2,
                                            scoreFunName=parameters['attenScoreFun'],
                                           name='attention_layer');
@@ -451,7 +505,9 @@ class Model(object):
             else:
                 attendedInput=attended[0];
         
-            final_output=attention_layer.link(attendedInput,attendedInput,final_output);
+            #final_output=attention_layer.link(attendedInput,attendedInput,final_output);
+            #using lstm_state to compute attention
+            final_output=attention_layer.link(final_output,final_c,final_output);
             self.energy=attention_layer.energy;
         else:
             final_output=final_output;
@@ -677,11 +733,11 @@ class Model(object):
                 givens=({is_train: np.cast['int32'](0)} if dropout else {})
             )
             #f_AttenVisual=theano.function(
-                #inputs=eval_inputs,
-                #outputs=[predictTag,self.energy],
-                #on_unused_input='ignore',
-                #givens=({is_train: np.cast['int32'](0)} if dropout else {})
-                #)
+            #    inputs=eval_inputs,
+            #    outputs=[predictTag,self.energy],
+            #    on_unused_input='ignore',
+            #    givens=({is_train: np.cast['int32'](0)} if dropout else {})
+            #    )
             #self.f_AttenVisual=f_AttenVisual;
 
         return f_train, f_eval;

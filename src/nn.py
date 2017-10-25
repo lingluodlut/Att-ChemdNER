@@ -1,7 +1,7 @@
 import theano
 import theano.tensor as T
 from utils import shared
-
+import numpy as np
 
 class HiddenLayer(object): 
 #{{{
@@ -120,9 +120,9 @@ class DropoutLayer(object):
         return self.output
 #}}}
 
-import activations;
-import backend as K;
-import  initializations;
+from keras import activations;
+from keras import backend as K;
+from keras import initializers as initializations;
 
 class Layer(object):
     def __init__(self):
@@ -278,6 +278,7 @@ class LSTM(object):
             outputs_info=initial_states,
         )
         self.h = h
+        self.c=c
         self.output = h[-1]
 
         return self.output
@@ -390,8 +391,241 @@ class LSTM_normal(object):
 #}}}
 #}}}
 
-class AttentionLayer(Layer):
+class AttentionLSTM(LSTM):
+    def build(self):
 #{{{
+        super(AttentionLSTM,self).build()   ;
+        self.W_A=shared((self.input_dim+self.output_dim,1),name='{}_W_A'.format(self.name));
+        self.b_A=shared((1,),name='{}_b_A'.format(self.name));
+        self.params+=[self.W_A,self.b_A];
+#}}}
+    def step(self, h_tm1,c_tm1,x):
+#{{{
+        assert x.ndim==2;
+        H=x;
+        input_length=x.shape[0];
+        C=T.repeat(c_tm1.reshape((1,-1)),input_length,axis=0);
+        _HC=K.concatenate([H,C]);
+        energy=T.dot(_HC,self.W_A.reshape((-1,1)))+self.b_A;
+        energy=K.softmax(energy.reshape((1,-1)));
+        x=(H*energy.reshape((-1,1))).sum(axis=0)
+        
+        h_t,c_t=super(AttentionLSTM,self).step_noBatch(x,h_tm1,c_tm1);
+        return  h_t,c_t
+#}}}
+    def link(self, input):
+#{{{
+        """
+        Propagate the input through the network and return the last hidden
+        vector. The whole sequence is also accessible via self.h, but
+        where self.h of shape (sequence_length, batch_size, output_dim)
+        """
+
+        # If we use batches, we have to permute the first and second dimension.
+        if self.with_batch:
+            assert 0,"AttentionLSTM not implement with_batch";
+        else:
+            self.input=input;
+            initial_states = [self.h_0, self.c_0] 
+         
+        step_function=self.step;  
+
+        [h,c], _ = theano.scan(
+            fn=step_function,
+            outputs_info=initial_states,
+            non_sequences=[self.input],
+            n_steps=self.input.shape[0]
+        )
+        self.h = h
+        self.output = self.h[-1]
+
+        return self.output
+#}}}
+ 
+class AttentionLSTM2(AttentionLSTM):
+#{{{
+    def __init__(self,attended_dim,wordInput_dim,
+                 combineOput_dim,output_dim, **kwargs):
+#{{{
+        self.attendedInput_dim=attended_dim;
+        self.wordInput_dim=wordInput_dim;
+        self.combineOput_dim=combineOput_dim;
+        super(AttentionLSTM2, self).__init__(output_dim=output_dim,
+                                             input_dim=combineOput_dim,
+                                             **kwargs)
+#}}}
+    def build(self):
+#{{{
+        if self.input_dim is None:
+            self.input_dim=self.combineOput_dim;
+        super(AttentionLSTM,self).build()   ;
+        #attention weight
+        self.W_A=shared((self.attendedInput_dim+self.output_dim,1),name='{}_W_A'.format(self.name));
+        self.b_A=shared((1,),name='{}_b_A'.format(self.name));
+        
+        #combine weight
+        self.W_combine=shared((self.attendedInput_dim+self.wordInput_dim,
+                                 self.combineOput_dim),
+                                 name='{}_W_combine'.format(self.name));
+        self.b_combine=shared((self.combineOput_dim,),
+                                 name='{}_b_combine'.format(self.name));
+        self.params+=[self.W_A,self.b_A];
+        self.params+=[self.W_combine,self.b_combine];
+
+#}}}
+    def step(self, word,h_tm1,c_tm1,x):
+#{{{
+        H=x;
+        input_length=x.shape[0];
+        C=T.repeat(c_tm1.reshape((1,-1)),input_length,axis=0);
+        _HC=K.concatenate([H,C]);
+        energy=T.dot(_HC,self.W_A.reshape((-1,1)))+self.b_A;
+        energy=K.softmax(energy.reshape((1,-1)));
+        x=(H*energy.reshape((-1,1))).sum(axis=0)
+
+        #combine glimpsed with word;
+        combine=K.concatenate([x,word]);
+        combined=K.dot(combine,self.W_combine)+self.b_combine;
+        #original LSTM step
+        h_t,c_t=super(AttentionLSTM,self).step_noBatch(combined,h_tm1,c_tm1);
+        return  h_t,c_t
+#}}}
+    def link(self, input,words):
+#{{{
+        """
+        Propagate the input through the network and return the last hidden
+        vector. The whole sequence is also accessible via self.h, but
+        where self.h of shape (sequence_length, batch_size, output_dim)
+        """
+
+        # If we use batches, we have to permute the first and second dimension.
+        if self.with_batch:
+            assert 0,"AttentionLSTM not implement with_batch";
+        else:
+            self.input = input
+            initial_states = [self.h_0, self.c_0] 
+        
+        step_function=self.step;  
+
+        [h,c], _ = theano.scan(
+            fn=step_function,
+            sequences=[words],
+            outputs_info=initial_states,
+            non_sequences=[self.input],
+        )
+        self.h = h
+        self.output = h[-1]
+
+        return self.output
+#}}}
+ 
+#}}}
+
+class AttentionLSTM3(LSTM):
+#{{{
+    def __init__(self,attended_dim,wordInput_dim,
+                 output_dim,mode='concat', **kwargs):
+#{{{
+        self.attendedInput_dim=attended_dim;
+        self.wordInput_dim=wordInput_dim;
+        self.attendedMode=mode;
+        self.init=initializations.get('glorot_uniform');
+        super(AttentionLSTM3, self).__init__(output_dim=output_dim,
+                                             input_dim=attended_dim+wordInput_dim,
+                                             **kwargs)
+#}}}
+    def build(self):
+#{{{
+        if self.input_dim is None:
+            self.input_dim=self.combineOput_dim;
+        super(AttentionLSTM3,self).build()   ;
+        #attention weight 
+        self.W_A_X=shared((self.attendedInput_dim,self.output_dim),
+                             name='{}_W_A_X');
+        #self.b_A_X=shared((self.output_dim,),
+        #                     name='{}_b_A_X');
+        self.W_A_h=shared((self.output_dim,self.output_dim),
+                             name='{}_W_A_h');
+        #self.b_A_h=shared((self.output_dim,),
+        #                     name='{}_b_A_h');
+        self.W_A=self.init((self.output_dim,),name='{}_W_A'.format(self.name));
+        #self.b_A=shared((1,),name='{}_b_A'.format(self.name));
+        self.params+=[self.W_A_X,
+                      #self.b_A_X,
+                          self.W_A_h,
+                      #self.b_A_h,
+                            self.W_A,
+                      #self.b_A,
+                         ];
+
+
+#}}}
+    def step(self, word,index,energy_tm1,h_tm1,c_tm1,x):
+#{{{
+        #attention 
+        H=x;
+        if self.attendedMode is "concat":
+            M_X=T.dot(x,self.W_A_X)#+self.b_A_X;
+            M_state=T.dot(self.W_A_h,c_tm1)#+self.b_A_h; 
+            M=T.tanh(M_X+M_state)
+            _energy=T.dot(M,self.W_A.T)#+self.b_A;
+        elif self.attendedMode is "dot":
+            energy=None;
+            assert 0,"not implement";
+        elif self.attendedMode is "general":
+            M_X=T.dot(x,self.W_A_X)#+self.b_A_X;
+            M_state=T.dot(self.W_A_h,c_tm1)#+self.b_A_h; 
+            M=T.tanh(M_X*M_state);
+            _energy=T.dot(M,self.W_A.T)#+self.b_A;
+        #mask
+        mask=T.zeros((1,x.shape[0]),dtype=theano.config.floatX);
+        energy=T.nnet.softmax(_energy[:index+1]);
+        masked_energy=T.set_subtensor(mask[0,:index+1],energy.flatten());
+        glimpsed=(masked_energy.T*H).sum(axis=0)
+        #combine glimpsed with word;
+        if self.wordInput_dim==0:
+            combined=glimpsed;
+        else:
+            combine=K.concatenate([glimpsed,word]);
+            combined=combine; 
+        #original LSTM step 
+        h_t,c_t=super(AttentionLSTM3,self).step(combined,h_tm1,c_tm1);
+        return  masked_energy.flatten(),h_t,c_t
+#}}}
+    def link(self, input,words):
+#{{{
+        """
+        Propagate the input through the network and return the last hidden
+        vector. The whole sequence is also accessible via self.h, but
+        where self.h of shape (sequence_length, batch_size, output_dim)
+        """
+
+        # If we use batches, we have to permute the first and second dimension.
+        if self.with_batch:
+            assert 0,"AttentionLSTM not implement with_batch";
+        else:
+            self.input = input
+            initial_states = [self.h_0, self.c_0] 
+        
+        step_function=self.step;  
+
+        [e,h,c], _ = theano.scan(
+            fn=step_function,
+            sequences=[words,T.arange(words.shape[0])],
+            outputs_info=[T.zeros((input.shape[0],),
+                                  dtype=theano.config.floatX)]+initial_states,
+            non_sequences=[self.input],
+        )
+        self.h = h
+        self.output = h[-1]
+        self.e=e;
+        self.c=c;
+        return self.output
+#}}}
+ 
+#}}}
+
+class AttentionLayer(Layer):
     def __init__(self,attended_dim,state_dim,
                 source_dim,scoreFunName='Euclidean',
                  atten_activation='tanh',name='AttentionLayer'):
@@ -465,6 +699,11 @@ class AttentionLayer(Layer):
         _energy=T.exp(M+2);
         return _energy;
 #}}}
+    def vanilaScore(self,attended,state,W):
+        """
+            the origin score proprosed by Bahdanau 2015
+        """
+
     def build(self):
 #{{{
         self.W_A_X=shared((self.attended_dim,self.attended_dim),
@@ -478,6 +717,11 @@ class AttentionLayer(Layer):
                                name='{}_W_A_combine'.format(self.name));
         self.b_A_combine=shared((self.source_dim,),
                                name='{}_b_A_combine'.format(self.name))
+        #self.W_A_combine=shared((self.source_dim,
+        #                         self.source_dim),
+        #                         name='{}_W_A_combine'.format(self.name));
+        #self.b_A_combine=shared((self.source_dim,),
+        #                         name='{}_b_A_combine'.format(self.name))
         #use constraint
         self.constraints={}
         
@@ -490,10 +734,9 @@ class AttentionLayer(Layer):
         #for attention weight and score function
         if self.scoreFunName == "Euclidean":
 #{{{
-            import numpy as np;
-            W_A=np.ones((self.state_dim,));
-            self.W_A=theano.shared(value=W_A.astype(theano.config.floatX),
+            self.W_A=shared((self.state_dim,),
                           name='{}_W_A'.format(self.name));
+            self.W_A.set_value(np.ones((self.state_dim,),dtype=theano.config.floatX));
             self.constraints[self.W_A]=self.NonNegConstraint;
             self.scoreFun=self.euclideanScore;
             self.params.append(self.W_A);
@@ -502,10 +745,8 @@ class AttentionLayer(Layer):
 #{{{
             assert self.attended_dim==self.state_dim,"in Bilinear score function,"\
                 " attended_dim must be equal to state_dim"
-            import numpy as np;
-            W_A=np.ones((self.state_dim,));
-            self.W_A=theano.shared(value=W_A.astype(theano.config.floatX),
-                          name='{}_W_A'.format(self.name));
+            self.W_A=self.init((self.state_dim,),
+                                name="{}_W_A".format(self.name));
             self.scoreFun=self.bilinearScore;
             self.params.append(self.W_A);
 #}}}
@@ -514,7 +755,7 @@ class AttentionLayer(Layer):
             #this is two layer NN 
             #first layer (attended_dim+state_dim,state_dim);
             #second layer (state_dim,1);
-            self.W_A=self.init(((self.attended_dim+self.state_dim)\
+            self.W_A=shared(((self.attended_dim+self.state_dim)\
                                 *self.state_dim+self.state_dim,),
                                 name="{}_W_A".format(self.name));
             self.scoreFun=self.forwardNNScore;
@@ -547,9 +788,7 @@ class AttentionLayer(Layer):
         elif self.scoreFunName == "Manhatten":
 #{{{
             self.scoreFun=self.manhattenScore;
-            import numpy as np;
-            W_A=np.ones((self.state_dim,));
-            self.W_A=theano.shared(value=W_A.astype(theano.config.floatX),
+            self.W_A=self.one_init((self.state_dim,),
                           name='{}_W_A'.format(self.name));
             self.constraints[self.W_A]=self.NonNegConstraint;
             self.params.append(self.W_A);
@@ -582,7 +821,6 @@ class AttentionLayer(Layer):
 #}}}
     
     def step(self,state,attended,source):
-#{{{
         #from theano.gradient import disconnected_grad;
         #state=disconnected_grad(state_);
         #M_state=T.dot(self.W_A_h,state) ;
@@ -595,13 +833,12 @@ class AttentionLayer(Layer):
         glimpsed=(energy.T*source).sum(axis=0)
         #glimpsed=source[energyIndex];
         return energy.flatten(),glimpsed;
-#}}}
+
     def NonNegConstraint(self,p):
         p*=K.cast(p>=0.,K.floatx());
         return p;
 
     def link(self,attended,state,source):
-#{{{
         step_function=self.step;
         attended_=T.tanh(T.dot(attended,self.W_A_X))+self.b_A_X;
         #attended_=attended;
@@ -615,9 +852,10 @@ class AttentionLayer(Layer):
         #combine=T.concatenate([glimpsed,attended],axis=-1);
         combine=T.concatenate([glimpsed,source],axis=-1);
         combined=T.tanh(T.dot(combine,self.W_A_combine))+self.b_A_combine;
+        #no source
+        #combined=T.tanh(T.dot(glimpsed,self.W_A_combine))+self.b_A_combine;
         return combined;
-#}}}
-#}}}
+
 def log_sum_exp(x, axis=None):
     """
     Sum probabilities in the log-space.
@@ -628,7 +866,6 @@ def log_sum_exp(x, axis=None):
 
 def forward(observations, transitions, viterbi=False,
             return_alpha=False, return_best_sequence=False):
-#{{{
     """
     Takes as input:
         - observations, sequence of shape (n_steps, n_classes)
@@ -690,5 +927,64 @@ def forward(observations, transitions, viterbi=False,
             return alpha[-1].max(axis=0)
         else:
             return log_sum_exp(alpha[-1], axis=0)
-#}}}
+
+
+def forward_org(observations, transitions, viterbi=False,
+            return_alpha=False, return_best_sequence=False):
+    """
+    Takes as input:
+        - observations, sequence of shape (n_steps, n_classes)
+        - transitions, sequence of shape (n_classes, n_classes)
+    Probabilities must be given in the log space.
+    Compute alpha, matrix of size (n_steps, n_classes), such that
+    alpha[i, j] represents one of these 2 values:
+        - the probability that the real path at node i ends in j
+        - the maximum probability of a path finishing in j at node i (Viterbi)
+    Returns one of these 2 values:
+        - alpha
+        - the final probability, which can be:
+            - the sum of the probabilities of all paths
+            - the probability of the best path (Viterbi)
+
+    """
+    
+    assert not return_best_sequence or (viterbi and not return_alpha)
+
+    def recurrence(obs, previous, transitions):
+        previous = previous.dimshuffle(0, 'x')
+        obs = obs.dimshuffle('x', 0)
+        if viterbi:
+            scores = previous + obs + transitions
+            out = scores.max(axis=0)
+            if return_best_sequence:
+                out2 = scores.argmax(axis=0)
+                return out, out2
+            else:
+                return out
+        else:
+            return log_sum_exp(previous + obs + transitions, axis=0)
+
+    initial = observations[0]
+    alpha, _ = theano.scan(
+        fn=recurrence,
+        outputs_info=(initial, None) if return_best_sequence else initial,
+        sequences=[observations[1:]],
+        non_sequences=transitions
+    )
+
+    if return_alpha:
+        return alpha
+    elif return_best_sequence:
+        sequence, _ = theano.scan(
+            fn=lambda beta_i, previous: beta_i[previous],
+            outputs_info=T.cast(T.argmax(alpha[0][-1]), 'int32'),
+            sequences=T.cast(alpha[1][::-1], 'int32')
+        )
+        #sequence = T.concatenate([sequence[::-1], [T.argmax(alpha[0][-1])]])
+        return alpha
+    else:
+        if viterbi:
+            return alpha[-1].max(axis=0)
+        else:
+            return log_sum_exp(alpha[-1], axis=0)
 
