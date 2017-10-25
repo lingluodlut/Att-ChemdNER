@@ -79,7 +79,7 @@ optparser.add_option(
     type='int', help="Use a bidirectional LSTM for words"
 )
 optparser.add_option(
-    "-p", "--pre_emb", default="/home/BIO/luoling/chemdner/data/word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d50",
+    "-p", "--pre_emb", default="./word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d50",
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
@@ -119,19 +119,19 @@ CORPUS="chem";
 tagFilter=None;
 if CORPUS == "chem":
 #{{{
-    opts.train="/home/BIO/luoling/chemdner/data/corpus/CHEMDNER/feature/all_fea/chemdner_training.ner.sen.token4.BIO_allfea";
-    opts.dev="/home/BIO/luoling/chemdner/data/corpus/CHEMDNER/feature/all_fea/chemdner_development.ner.sen.token4.BIO_allfea";
-    opts.test="/home/BIO/luoling/chemdner/data/corpus/CHEMDNER/feature/all_fea/chemdner_evaluation.ner.sen.token4.BIO_allfea";
-    opts.pre_emb="/home/BIO/luoling/chemdner/data/word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d300";
+    opts.train="./chemdner_corpus/chemdner_training.ner.sen.token4.BIO_allfea";
+    opts.dev="./chemdner_corpus/chemdner_development.ner.sen.token4.BIO_allfea";
+    opts.test="./chemdner_corpus/chemdner_evaluation.ner.sen.token4.BIO_allfea";
+    opts.pre_emb="./word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d50";
     tagFilter=None;
     devBoundary=55508
 #}}}
 elif CORPUS == "CDR":
 #{{{
-    opts.train="/home/BIO/luoling/chemdner/data/corpus/CDR/feature/all_fea/cdr_training.ner.sen.token4.BIO_allfea_drug";
-    opts.dev="/home/BIO/luoling/chemdner/data/corpus/CDR/feature/all_fea/cdr_development.ner.sen.token4.BIO_allfea_drug";
-    opts.test="/home/BIO/luoling/chemdner/data/corpus/CDR/feature/all_fea/cdr_test.ner.sen.token4.BIO_allfea_drug";
-    opts.pre_emb="/home/BIO/luoling/chemdner/data/word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d50";
+    opts.train="./cdr_corpus/cdr_training.ner.sen.token4.BIO_allfea_drug";
+    opts.dev="./cdr_corpus/cdr_development.ner.sen.token4.BIO_allfea_drug";
+    opts.test="./cdr_corpus/cdr_test.ner.sen.token4.BIO_allfea_drug";
+    opts.pre_emb="./word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d50";
     tagFilter=['Disease'];
     devBoundary=8319;
 #}}}
@@ -354,7 +354,7 @@ useEarlyStopping=False;
 # Initialize model
 model = Model(parameters=parameters, 
               models_path=models_path,
-              model_path="./models/bilstm-crf-dic-chemdner-patentv-50d/",Training=True);
+              model_path="./models/bilstm-crf-dic-chemdner-50d/",Training=True);
 # Save the mappings to disk
 print 'Saving the mappings to disk...'
 model.save_mappings(id_to_word, id_to_char, id_to_tag)

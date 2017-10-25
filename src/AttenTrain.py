@@ -80,7 +80,7 @@ optparser.add_option(
     type='int', help="Use a bidirectional LSTM for words"
 )
 optparser.add_option(
-    "-p", "--pre_emb", default="/home/BIO/luoling/chemdner/data/word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d50",
+    "-p", "--pre_emb", default="./word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d50",
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
@@ -122,24 +122,24 @@ attenScoreFunTotal=['Euclidean','forwardNN','Cosine','Manhatten'];
 attenScoreFun=attenScoreFunTotal[0]
 if CORPUS == "chem":
 #{{{
-    opts.train="/home/BIO/luoling/chemdner/data/corpus/CHEMDNER/feature/all_fea/chemdner_training.ner.doc.token4.BIO_allfea";
-    opts.dev="/home/BIO/luoling/chemdner/data/corpus/CHEMDNER/feature/all_fea/chemdner_development.ner.doc.token4.BIO_allfea";
-    opts.test="/home/BIO/luoling/chemdner/data/corpus/CHEMDNER/feature/all_fea/chemdner_evaluation.ner.doc.token4.BIO_allfea";
-    opts.pre_emb="/home/BIO/luoling/chemdner/data/word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d50";
-    ssplitTrainFName="/home/BIO/yangpei/chemNer/corpus/training.ner.ssplit.token4.BIO";
-    ssplitDevFName="/home/BIO/yangpei/chemNer/corpus/development.ner.ssplit.token4.BIO";
-    ssplitTestFName="/home/BIO/yangpei/chemNer/corpus/evaluation.ner.ssplit.token4.BIO";
+    opts.train="./chemdner_corpus/chemdner_training.ner.doc.token4.BIO_allfea";
+    opts.dev="./chemdner_corpus/chemdner_development.ner.doc.token4.BIO_allfea";
+    opts.test="./chemdner_corpus/chemdner_evaluation.ner.doc.token4.BIO_allfea";
+    opts.pre_emb="./word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d50";
+    ssplitTrainFName="./chemdner_corpus/training.ner.ssplit.token4.BIO";
+    ssplitDevFName="./chemdner_corpus/development.ner.ssplit.token4.BIO";
+    ssplitTestFName="./chemdner_corpus/evaluation.ner.ssplit.token4.BIO";
     tagFilter=None;
 #}}}
 elif CORPUS == "CDR":
 #{{{
-    opts.train="/home/BIO/luoling/chemdner/data/corpus/CDR/feature/all_fea/cdr_training.ner.doc.token4.BIO_allfea_drug";
-    opts.dev="/home/BIO/luoling/chemdner/data/corpus/CDR/feature/all_fea/cdr_development.ner.doc.token4.BIO_allfea_drug";
-    opts.test="/home/BIO/luoling/chemdner/data/corpus/CDR/feature/all_fea/cdr_test.ner.doc.token4.BIO_allfea_drug";
-    opts.pre_emb="/home/BIO/luoling/chemdner/data/word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d50";
-    ssplitTrainFName="/home/BIO/luoling/chemdner/data/corpus/CDR/CDR_TrainingSet.ner.ssplit.token.BIO_sen";
-    ssplitDevFName="/home/BIO/luoling/chemdner/data/corpus/CDR/CDR_DevelopmentSet.ner.ssplit.token.BIO_sen";
-    ssplitTestFName="/home/BIO/yangpei/chemNer/corpus/cdr_test.ner.sen.token4.BIO_allfea.output";
+    opts.train="./cdr_corpus/cdr_training.ner.doc.token4.BIO_allfea_drug";
+    opts.dev="./chemdner_corpus/cdr_development.ner.doc.token4.BIO_allfea_drug";
+    opts.test="./chemdner_corpus/cdr_test.ner.doc.token4.BIO_allfea_drug";
+    opts.pre_emb="./word2vec_model/chemdner_pubmed_drug.word2vec_model_token4_d50";
+    ssplitTrainFName="./chemdner_corpus/cdr_training.ner.sen.token4.BIO_allfea_drug";
+    ssplitDevFName="./chemdner_corpus/cdr_development.ner.sen.token4.BIO_allfea_drug";
+    ssplitTestFName="./chemdner_corpus/cdr_dtest.ner.sen.token4.BIO_allfea_drug";
     tagFilter=['Disease'];
 #}}}
 
@@ -346,7 +346,7 @@ parameters['features']=featureMap;
 
 # Build the model 
 parameters['loading']=False;
-parameters['loading_path']="./models/bilstm-crf-chemdner300d-new/";
+parameters['loading_path']="./models/bilstm-crf-chemdner50d/";
 parameters['sentencesLevelLoss']=False;
 saveModel=False;
 parameters['training']=True;
@@ -398,12 +398,12 @@ count = 0
 limitPrint=0;
 param = {
          #'lr':0.005,
-         'lr':0.01,
+         'lr':0.001,
          'verbose':1,
          'decay':True, # decay on the learning rate if improvement stops
          'bs':5, # number of backprop through time steps
          'seed':345,
-         'epochs':45,
+         'epochs':30,
          'crf':True,
          'shuffle':True};
 folder_out = '../log/Attention/'
