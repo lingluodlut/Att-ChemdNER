@@ -1,5 +1,7 @@
 # Att-ChemdNER
 ***
+This repo contains the source code and dataset for the following paper:
+-Ling Luo, Zhihao Yang, Pei Yang, Yin Zhang, Lei Wang, Hongfei Lin, Jian Wang. An Attention-based BiLSTM-CRF Approach to Document-level Chemical Named Entity Recognition. Bioinformatics, 2017.(https://academic.oup.com/bioinformatics/advance-article-abstract/doi/10.1093/bioinformatics/btx761/4657076?redirectedFrom=fulltext)
 ## Dependency package
 
 Att-ChemdNER uses the following dependencies:
