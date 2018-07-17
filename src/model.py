@@ -505,9 +505,9 @@ class Model(object):
             else:
                 attendedInput=attended[0];
         
-            #final_output=attention_layer.link(attendedInput,attendedInput,final_output);
+            final_output=attention_layer.link(attendedInput,attendedInput,final_output);
             #using lstm_state to compute attention
-            final_output=attention_layer.link(final_output,final_c,final_output);
+            #final_output=attention_layer.link(final_output,final_c,final_output);
             self.energy=attention_layer.energy;
         else:
             final_output=final_output;
